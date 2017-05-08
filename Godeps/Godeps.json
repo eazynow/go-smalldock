@@ -7,6 +7,11 @@
 			"ImportPath": "github.com/eazynow/bone",
 			"Comment": "1.2-23-g1cb672c",
 			"Rev": "1cb672cf9dbefa9a441499367ccd41a28f8b6baf"
+		},
+		{
+			"ImportPath": "github.com/urfave/negroni",
+			"Comment": "v0.2.0-115-g1d8981a",
+			"Rev": "1d8981a52d6bda4467a9faacf3fdddd38222dfc4"
 		}
 	]
 }

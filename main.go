@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/eazynow/bone"
+	"github.com/urfave/negroni"
 )
 
 const (
@@ -21,12 +22,18 @@ func formatTime(timestamp time.Time) string {
 }
 
 func main() {
+	// bone is a lightweight HTTP multiplexer for go
 	mux := bone.New()
 	mux.Get("/health", http.HandlerFunc(healthHandler))
-	fmt.Printf("listening on localhost, port %d...", HTTPPort)
-	http.ListenAndServe(fmt.Sprintf(":%d", HTTPPort), mux)
+
+	// use negroni to make it easy to add middleware in later
+	// at low cost. Also provides basic logging out the box
+	n := negroni.Classic()
+	n.UseHandler(mux)
+	n.Run(fmt.Sprintf(":%d", HTTPPort))
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
+	// just return a 200 with the current time
 	fmt.Fprintf(w, "OK at %s", time.Now())
 }

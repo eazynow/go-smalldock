@@ -1,0 +1,12 @@
+{
+	"ImportPath": "github.com/Eazynow/go-smalldock",
+	"GoVersion": "go1.8",
+	"GodepVersion": "v74",
+	"Deps": [
+		{
+			"ImportPath": "github.com/go-zoo/bone",
+			"Comment": "v1.1-7-g861b030",
+			"Rev": "861b03028e1b30a532649b69bded364b410b7f71"
+		}
+	]
+}

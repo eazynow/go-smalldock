@@ -4,9 +4,9 @@
 	"GodepVersion": "v79",
 	"Deps": [
 		{
-			"ImportPath": "github.com/go-zoo/bone",
-			"Comment": "v1.1-7-g861b030",
-			"Rev": "861b03028e1b30a532649b69bded364b410b7f71"
+			"ImportPath": "github.com/eazynow/bone",
+			"Comment": "1.2-23-g1cb672c",
+			"Rev": "1cb672cf9dbefa9a441499367ccd41a28f8b6baf"
 		}
 	]
 }

@@ -14,9 +14,13 @@ import (
 )
 
 const (
+	//PARAM value store in Atts if the route have parameters
 	PARAM = 2
-	SUB   = 4
-	WC    = 8
+	//SUB value store in Atts if the route is a sub router
+	SUB = 4
+	//WC value store in Atts if the route have wildcard
+	WC = 8
+	//REGEX value store in Atts if the route contains regex
 	REGEX = 16
 )
 
@@ -56,7 +60,7 @@ func NewRoute(url string, h http.Handler) *Route {
 	return r
 }
 
-// Save, set automaticly the the Route.Size and Route.Pattern value
+// Save, set automatically the the Route.Size and Route.Pattern value
 func (r *Route) save() {
 	r.Size = len(r.Path)
 	r.Token.Tokens = strings.Split(r.Path, "/")
@@ -68,7 +72,7 @@ func (r *Route) save() {
 					r.Pattern = make(map[int]string)
 				}
 				r.Pattern[i] = s[1:]
-				r.Atts += PARAM
+				r.Atts |= PARAM
 			case "#":
 				if r.Compile == nil {
 					r.Compile = make(map[int]*regexp.Regexp)
@@ -77,10 +81,10 @@ func (r *Route) save() {
 				tmp := strings.Split(s, "^")
 				r.Tag[i] = tmp[0][1:]
 				r.Compile[i] = regexp.MustCompile("^" + tmp[1][:len(tmp[1])-1])
-				r.Atts += REGEX
+				r.Atts |= REGEX
 			case "*":
 				r.wildPos = i
-				r.Atts += WC
+				r.Atts |= WC
 			default:
 				r.Token.raw = append(r.Token.raw, i)
 			}
@@ -91,30 +95,62 @@ func (r *Route) save() {
 
 // Match check if the request match the route Pattern
 func (r *Route) Match(req *http.Request) bool {
-	ss := strings.Split(req.URL.Path, "/")
+	ok, _ := r.matchAndParse(req)
+	return ok
+}
 
+// matchAndParse check if the request matches the route Pattern and returns a map of the parsed
+// variables if it matches
+func (r *Route) matchAndParse(req *http.Request) (bool, map[string]string) {
+	ss := strings.Split(req.URL.EscapedPath(), "/")
 	if r.matchRawTokens(&ss) {
 		if len(ss) == r.Token.Size || r.Atts&WC != 0 {
-			if vars.v[req] == nil {
-				vars.Lock()
-				vars.v[req] = make(map[string]string)
-				vars.Unlock()
+			totalSize := len(r.Pattern)
+			if r.Atts&REGEX != 0 {
+				totalSize += len(r.Compile)
 			}
+
+			vars := make(map[string]string, totalSize)
 			for k, v := range r.Pattern {
-				vars.v[req][v] = ss[k]
+				vars[v] = ss[k]
 			}
+
 			if r.Atts&REGEX != 0 {
 				for k, v := range r.Compile {
 					if !v.MatchString(ss[k]) {
-						return false
+						return false, nil
 					}
-					vars.Lock()
-					vars.v[req][r.Tag[k]] = ss[k]
-					vars.Unlock()
+					vars[r.Tag[k]] = ss[k]
 				}
 			}
+
+			return true, vars
+		}
+	}
+
+	return false, nil
+}
+
+func (r *Route) parse(rw http.ResponseWriter, req *http.Request) bool {
+	if r.Atts != 0 {
+		if r.Atts&SUB != 0 {
+			if len(req.URL.Path) >= r.Size {
+				if req.URL.Path[:r.Size] == r.Path {
+					req.URL.Path = req.URL.Path[r.Size:]
+					r.Handler.ServeHTTP(rw, req)
+					return true
+				}
+			}
+		}
+
+		if ok, vars := r.matchAndParse(req); ok {
+			r.serveMatchedRequest(rw, req, vars)
 			return true
 		}
+	}
+	if req.URL.Path == r.Path {
+		r.Handler.ServeHTTP(rw, req)
+		return true
 	}
 	return false
 }
@@ -129,6 +165,26 @@ func (r *Route) matchRawTokens(ss *[]string) bool {
 				return false
 			}
 		}
+		return true
+	}
+	return false
+}
+
+func (r *Route) exists(rw http.ResponseWriter, req *http.Request) bool {
+	if r.Atts != 0 {
+		if r.Atts&SUB != 0 {
+			if len(req.URL.Path) >= r.Size {
+				if req.URL.Path[:r.Size] == r.Path {
+					return true
+				}
+			}
+		}
+
+		if ok, _ := r.matchAndParse(req); ok {
+			return true
+		}
+	}
+	if req.URL.Path == r.Path {
 		return true
 	}
 	return false
